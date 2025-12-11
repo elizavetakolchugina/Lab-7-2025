@@ -162,6 +162,32 @@ public final class TabulatedFunctions {
             throw new RuntimeException ("Ошибка при вводе функции", e);
         }
     }
+
+    // Перегруженный метод inputTabulatedFunction через рефлексию
+
+    public static TabulatedFunction inputTabulatedFunction(Class<?> functionClass, InputStream in){
+        if (!TabulatedFunction.class.isAssignableFrom(functionClass)) {
+            throw new IllegalArgumentException("Класс не реализует интерфейс TabulatedFunction");
+        }
+        
+        DataInputStream dataIn = new DataInputStream(in);
+        try {
+            int pointsCount = dataIn.readInt();
+            FunctionPoint[] points = new FunctionPoint[pointsCount];
+
+            for (int i = 0; i < pointsCount; i++) {
+                double x = dataIn.readDouble();
+                double y = dataIn.readDouble();
+                points[i] = new FunctionPoint(x, y);
+            }
+            return createTabulatedFunction(functionClass, points);
+
+        } catch (IOException e) {
+            throw new RuntimeException ("Ошибка при вводе функции", e);
+        }
+    }
+
+
     public static void writeTabulatedFunction(TabulatedFunction function, Writer out){
         PrintWriter writer = new PrintWriter(out);
         try {
@@ -216,6 +242,53 @@ public final class TabulatedFunctions {
             } 
 
             return createTabulatedFunction(points);
+
+        } catch (IOException e) {
+            throw new RuntimeException("Ошибка при чтении", e);
+        } catch(NumberFormatException e) {
+            throw new RuntimeException("Неверный формат числа", e);
+        }
+    }
+
+    // Перегруженный метод readTabulatedFunction через рефлексию
+    public static TabulatedFunction readTabulatedFunction(Class<?> functionClass, Reader in) {
+        if (!TabulatedFunction.class.isAssignableFrom(functionClass)) {
+            throw new IllegalArgumentException("Класс не реализует интерфейс TabulatedFunction");
+        }
+        
+        StreamTokenizer tokenizer = new StreamTokenizer(in);
+        try {
+            tokenizer.resetSyntax();
+            tokenizer.wordChars('0', '9');
+            tokenizer.wordChars('.', '.');
+            tokenizer.wordChars('-', '-');
+            tokenizer.wordChars('e', 'e');
+            tokenizer.wordChars('E', 'E');
+            tokenizer.whitespaceChars(' ', ' ');
+            tokenizer.whitespaceChars('\t', '\t');
+            tokenizer.whitespaceChars('\n', '\n');
+            tokenizer.whitespaceChars('\r', '\r');
+
+
+            if (tokenizer.nextToken() != StreamTokenizer.TT_WORD) {
+                throw new RuntimeException("Отсутствует количество точек");
+            }
+            int pointsCount = Integer.parseInt(tokenizer.sval);
+
+            FunctionPoint[] points = new FunctionPoint[pointsCount];
+            for (int i = 0; i < pointsCount; i++) {
+                if (tokenizer.nextToken() != StreamTokenizer.TT_WORD){
+                    throw new RuntimeException ("Отсутствует координата x");
+                }
+                double x = Double.parseDouble(tokenizer.sval);
+                if (tokenizer.nextToken() != StreamTokenizer.TT_WORD){
+                    throw new RuntimeException ("Отсутствует координата y");
+                }
+                double y = Double.parseDouble(tokenizer.sval);
+                points[i] = new FunctionPoint(x, y);                                   
+            } 
+
+            return createTabulatedFunction(functionClass, points);
 
         } catch (IOException e) {
             throw new RuntimeException("Ошибка при чтении", e);
